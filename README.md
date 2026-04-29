@@ -2,6 +2,8 @@
 
 Use the [Portable Text Editor](https://www.portabletext.org/editor/) in any server-rendered HTML app via a single `<script>` tag and a `<portable-text-editor>` custom element.
 
+**[Try it live →](https://kevinsimper.github.io/portable-text-editor-htmx/)**
+
 ## Why
 
 The Portable Text Editor only ships as a React component, but plenty of stacks (Hono, htmx, Rails, Django, plain PHP, …) are server-rendered and don't want a full SPA build just to author rich text.
@@ -18,6 +20,23 @@ bun run dev
 ```
 
 Open <http://localhost:3000>. Type something, toggle some styles, click **Save** — the saved content renders above the editor as real HTML.
+
+## Install (CDN)
+
+No build step. Drop one `<script>` from [esm.sh](https://esm.sh/) into any HTML page:
+
+```html
+<script
+  src="https://esm.sh/gh/kevinsimper/portable-text-editor-htmx@main/public/client.js?raw"
+  defer
+></script>
+
+<portable-text-editor name="content" data-initial="[]"></portable-text-editor>
+```
+
+`@main` follows the latest commit. **For production, pin to a tagged release** (e.g. `@v0.1.0`) or a commit SHA so the bundle is immutable.
+
+Live demo: <https://kevinsimper.github.io/portable-text-editor-htmx/>
 
 ## Use it in your own app
 
