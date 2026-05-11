@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { serveStatic } from 'hono/bun'
-import type { PortableTextBlock } from '@portabletext/to-html'
+import type { PortableTextBlock } from '@portabletext/types'
 import { Home } from './views/home'
 import { getSaved, setSaved } from './store'
 

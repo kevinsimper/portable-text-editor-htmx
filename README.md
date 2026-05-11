@@ -19,7 +19,7 @@ bun install
 bun run dev
 ```
 
-Open <http://localhost:3000>. Type something, toggle some styles, click **Save** — the saved content renders above the editor as real HTML.
+Open <http://localhost:3000>. Type something, toggle styles or lists, insert an image path, click **Save** — the saved content renders above the editor as real HTML.
 
 ## Install (CDN)
 
@@ -62,6 +62,12 @@ const html = toHTML(savedBlocks)
 ```
 
 See `src/views/home.tsx` for a working example.
+
+Images inserted by this editor are plain Portable Text block objects:
+
+```json
+{ "_type": "image", "src": "/image.jpg", "alt": "Optional description" }
+```
 
 ## API
 
@@ -132,7 +138,7 @@ const unmount = window.PortableTextEditor.mount(el, {
 ## Limitations (POC scope)
 
 - In-memory store; restart loses content. Swap `src/store.ts` for SQLite / a real DB.
-- Schema covers basic styles (`normal`, `h1–h3`, `blockquote`) and decorators (`strong`, `em`, `underline`). Annotations, inline objects, and block objects are stubbed but not wired up.
+- Schema covers basic styles (`normal`, `h1–h3`, `blockquote`), decorators (`strong`, `em`, `underline`), bullet/numbered lists, and simple path-based image blocks. Annotations and inline objects are stubbed but not wired up.
 - Requires React 19 (PTE peer dependency).
 - No auth, no multi-document.
 

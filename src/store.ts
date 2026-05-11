@@ -1,4 +1,4 @@
-import type { PortableTextBlock } from '@portabletext/to-html'
+import type { PortableTextBlock } from '@portabletext/types'
 
 let saved: PortableTextBlock[] | undefined = undefined
 
