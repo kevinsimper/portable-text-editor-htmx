@@ -63,11 +63,26 @@ const html = toHTML(savedBlocks)
 
 See `src/views/home.tsx` for a working example.
 
-Images inserted by this editor are plain Portable Text block objects:
+Images and videos are native Portable Text block objects. Use **Image** or
+**Video** in the toolbar to enter a URL, description, and optional caption.
+Each media block has **Edit** and **Remove** controls. Edits participate in the
+existing `pte:change` event and hidden form input, including when the form is
+submitted immediately after editing a caption.
 
 ```json
-{ "_type": "image", "src": "/image.jpg", "alt": "Optional description" }
+{ "_type": "image", "src": "/image.jpg", "alt": "A taxi", "caption": "Ready for service" }
+{ "_type": "video", "src": "/video.mp4", "alt": "A taxi arriving", "caption": "Workshop arrival" }
 ```
+
+`alt` is the image's alternative text or the video's accessible description;
+`caption` is the separate visible caption. Existing image blocks without a
+caption continue to work. An optional `mimeType` field is preserved when supplied
+by the host application. Video previews use a real player with controls, without
+autoplay. The host application remains responsible for uploads and storage.
+
+Register serializers for both `image` and `video` when rendering saved blocks.
+`src/views/home.tsx` demonstrates responsive media, escaped captions, and video
+playback with `renderMediaHtml` from `src/media.ts`.
 
 ## API
 
@@ -83,15 +98,20 @@ Images inserted by this editor are plain Portable Text block objects:
 The element dispatches `pte:change` on every editor mutation. The event's `detail` is the current Portable Text value.
 
 ```js
-document.querySelector('portable-text-editor').addEventListener('pte:change', (e) => {
-  console.log(e.detail)
-})
+document
+  .querySelector('portable-text-editor')
+  .addEventListener('pte:change', (e) => {
+    console.log(e.detail)
+  })
 ```
 
 For htmx, you can wire it up directly:
 
 ```html
-<div hx-post="/autosave" hx-trigger="pte:change from:closest portable-text-editor delay:500ms">
+<div
+  hx-post="/autosave"
+  hx-trigger="pte:change from:closest portable-text-editor delay:500ms"
+>
   <portable-text-editor name="content"></portable-text-editor>
 </div>
 ```
@@ -138,9 +158,19 @@ const unmount = window.PortableTextEditor.mount(el, {
 ## Limitations (POC scope)
 
 - In-memory store; restart loses content. Swap `src/store.ts` for SQLite / a real DB.
-- Schema covers basic styles (`normal`, `h1–h3`, `blockquote`), decorators (`strong`, `em`, `underline`), bullet/numbered lists, and simple path-based image blocks. Annotations and inline objects are stubbed but not wired up.
+- Schema covers basic styles (`normal`, `h1–h3`, `blockquote`), decorators (`strong`, `em`, `underline`), bullet/numbered lists, and image/video blocks with descriptions and captions. Annotations and inline objects are stubbed but not wired up.
 - Requires React 19 (PTE peer dependency).
 - No auth, no multi-document.
+
+## Development checks
+
+Install dependencies with `bun install --frozen-lockfile`, build the committed
+browser bundle with `bun run build:client`, and run `node --test tests/*.test.ts`
+using Node 22.18 or newer. Type-check with `bunx tsc --noEmit`.
+
+The DOM tests bundle the current source and exercise native video insertion,
+caption editing/removal, `pte:change` synchronization, and standard form
+submission. The rendering tests cover legacy image blocks and unsafe URLs.
 
 ## License
 

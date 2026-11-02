@@ -1,6 +1,9 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
 
-export const Layout: FC<PropsWithChildren<{ title: string }>> = ({ title, children }) => (
+export const Layout: FC<PropsWithChildren<{ title: string }>> = ({
+  title,
+  children,
+}) => (
   <html>
     <head>
       <meta charset="utf-8" />
@@ -10,7 +13,8 @@ export const Layout: FC<PropsWithChildren<{ title: string }>> = ({ title, childr
         body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
         h1 { margin-bottom: 0.25rem; }
         .saved { background: #f6f6f6; border: 1px solid #ddd; padding: 1rem; border-radius: 6px; margin-bottom: 2rem; }
-        .saved img { max-width: 100%; height: auto; display: block; }
+        .saved img, .saved video { max-width: 100%; height: auto; display: block; }
+        .saved figcaption { margin-top: 0.5rem; color: #525252; font-size: 0.875rem; }
         form { margin-top: 1rem; }
         button[type="submit"] { margin-top: 1rem; padding: 8px 16px; cursor: pointer; }
         pre { background: #f6f6f6; padding: 1rem; overflow-x: auto; font-size: 12px; }

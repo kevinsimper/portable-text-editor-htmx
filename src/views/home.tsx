@@ -2,21 +2,7 @@ import { toHTML } from '@portabletext/to-html'
 import type { PortableTextBlock } from '@portabletext/types'
 import { raw } from 'hono/html'
 import { Layout } from './layout'
-
-type ImageBlock = {
-  _type: 'image'
-  src?: string
-  alt?: string
-}
-
-const escapeHtml = (value: string): string =>
-  value.replace(/[&<>"']/g, (char) => {
-    if (char === '&') return '&amp;'
-    if (char === '<') return '&lt;'
-    if (char === '>') return '&gt;'
-    if (char === '"') return '&quot;'
-    return '&#x27;'
-  })
+import { renderMediaHtml } from '../media'
 
 export const Home = ({ saved }: { saved: PortableTextBlock[] | undefined }) => {
   const savedHtml =
@@ -24,15 +10,8 @@ export const Home = ({ saved }: { saved: PortableTextBlock[] | undefined }) => {
       ? toHTML(saved, {
           components: {
             types: {
-              image: ({ value }) => {
-                const image = value as ImageBlock
-                if (!image.src) return ''
-                const src = escapeHtml(image.src)
-                const alt = escapeHtml(image.alt ?? '')
-                return `<figure><img src="${src}" alt="${alt}">${
-                  image.alt ? `<figcaption>${alt}</figcaption>` : ''
-                }</figure>`
-              },
+              image: ({ value }) => renderMediaHtml('image', value),
+              video: ({ value }) => renderMediaHtml('video', value),
             },
           },
         })
@@ -51,7 +30,10 @@ export const Home = ({ saved }: { saved: PortableTextBlock[] | undefined }) => {
 
       <h2>Editor</h2>
       <form method="post" action="/save">
-        <portable-text-editor name="value" data-initial={initialJson}></portable-text-editor>
+        <portable-text-editor
+          name="value"
+          data-initial={initialJson}
+        ></portable-text-editor>
         <button type="submit">Save</button>
       </form>
 
