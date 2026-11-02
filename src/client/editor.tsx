@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
-import { StrictMode, useLayoutEffect, useState } from 'react'
+import { StrictMode, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { mediaDialogLayout } from './media-dialog'
 import {
   defineSchema,
   EditorProvider,
@@ -138,13 +139,28 @@ const editorStyles = `
   .pte-root .pte-list-item-marker { flex: 0 0 1.25rem; text-align: right; }
   .pte-root .pte-list-item-content { flex: 1; min-width: 0; }
   .pte-root figcaption { color: #737373; font-size: 0.875rem; margin-top: 0.25rem; }
-  .pte-root .pte-media-tool { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .pte-root .pte-media-fields { display: grid; gap: 8px; width: min(30rem, 100%); }
+  .pte-root .pte-media-tool { display: inline-flex; align-items: center; }
+  .pte-root .pte-media-fields { display: grid; gap: 14px; width: 100%; min-width: 0; }
   .pte-root .pte-media-fields label { display: grid; gap: 4px; font-size: 0.875rem; color: #404040; }
-  .pte-root .pte-media-fields input { width: 100%; min-height: 34px; border: 1px solid #c7c7c7; border-radius: 6px; padding: 6px 8px; color: #171717; background: #fff; font: inherit; }
+  .pte-root .pte-media-fields input { width: 100%; min-width: 0; min-height: 44px; border: 1px solid #c7c7c7; border-radius: 8px; padding: 10px 12px; color: #171717; background: #fff; font: inherit; font-size: 16px; }
   .pte-root .pte-media-fields input:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-  .pte-root .pte-media-dialog, .pte-root .pte-media-edit { padding: 12px; border: 1px solid #d4d4d4; border-radius: 8px; background: #fff; color: #171717; }
-  .pte-root .pte-media-dialog { display: grid; gap: 8px; }
+  .pte-root .pte-media-dialog { position: fixed; inset: auto; margin: 0; width: min(23rem, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: var(--pte-dialog-max-height, calc(100dvh - 32px)); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 20px; padding: 20px; border: 1px solid #d4d4d4; border-radius: 16px; background: #fff; color: #171717; box-shadow: 0 16px 48px rgb(0 0 0 / 0.18); font: 16px/1.5 system-ui, sans-serif; }
+  .pte-root .pte-media-dialog:not([open]) { display: none; }
+  .pte-root .pte-media-dialog::backdrop { background: rgb(15 23 42 / 0.28); }
+  .pte-root .pte-media-dialog-header { display: flex; gap: 12px; justify-content: space-between; align-items: center; }
+  .pte-root .pte-media-dialog-header h2 { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.3; }
+  .pte-root .pte-media-dialog button { min-height: 44px; padding: 10px 16px; border: 1px solid #d4d4d4; border-radius: 8px; background: #fff; color: #262626; font: inherit; line-height: 1.25; cursor: pointer; }
+  .pte-root .pte-media-dialog button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+  .pte-root .pte-media-dialog .pte-media-close { min-width: 44px; padding: 8px; border-color: transparent; font-size: 24px; }
+  .pte-root .pte-media-dialog .pte-media-actions { justify-content: flex-end; gap: 8px; }
+  .pte-root .pte-media-dialog .pte-media-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .pte-root .pte-media-dialog .pte-media-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+  .pte-root .pte-media-edit { padding: 12px; border: 1px solid #d4d4d4; border-radius: 8px; background: #fff; color: #171717; }
+  @media (max-width: 640px) {
+    .pte-root .pte-toolbar button { min-width: 44px; min-height: 44px; }
+    .pte-root .pte-media-dialog { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+    .pte-root .pte-media-dialog .pte-media-actions button { flex: 1; }
+  }
   .pte-root .pte-media-edit { display: grid; gap: 10px; margin-top: 10px; }
   .pte-root .pte-media-actions { display: flex; flex-wrap: wrap; gap: 6px; }
   .pte-root .pte-media-actions button, .pte-root .pte-media-edit button { border: 1px solid #a3a3a3; border-radius: 6px; padding: 5px 8px; background: #fff; color: #262626; cursor: pointer; font: inherit; }
@@ -314,6 +330,10 @@ function MediaFields({
         {label} URL
         <input
           aria-label={`${label} URL`}
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={value.src}
           placeholder={kind === 'video' ? '/video.mp4' : '/image.jpg'}
           onChange={(event) =>
@@ -351,6 +371,8 @@ function MediaButton({
   schemaType: ToolbarBlockObjectSchemaType
 }) {
   const btn = useBlockObjectButton({ schemaType })
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const [fields, setFields] = useState<MediaFieldsValue>({
     src: '',
     alt: '',
@@ -359,68 +381,161 @@ function MediaButton({
   const [error, setError] = useState('')
   const kind: MediaKind = schemaType.name === 'video' ? 'video' : 'image'
   const showingDialog = btn.snapshot.matches({ enabled: 'showing dialog' })
+
   function reset(): void {
     setFields({ src: '', alt: '', caption: '' })
     setError('')
   }
+  function close(): void {
+    dialogRef.current?.close()
+    btn.send({ type: 'close dialog' })
+    reset()
+  }
+  function insert(): void {
+    const src = safeMediaSource(fields.src)
+    if (!src) {
+      setError('Enter a valid media URL or path.')
+      return
+    }
+    // Close the modal before the editor restores its insertion selection.
+    dialogRef.current?.close()
+    btn.send({
+      type: 'insert',
+      value: { src, alt: fields.alt.trim(), caption: fields.caption.trim() },
+      placement: undefined,
+    })
+    reset()
+  }
+
+  useEffect(() => {
+    if (!showingDialog || !dialogRef.current || !triggerRef.current) return
+    const dialog = dialogRef.current
+    const trigger = triggerRef.current
+    const view = dialog.ownerDocument.defaultView!
+    function position(): void {
+      const visual = view.visualViewport
+      const viewport = {
+        left: visual?.offsetLeft ?? 0,
+        top: visual?.offsetTop ?? 0,
+        width: visual?.width ?? view.innerWidth,
+        height: visual?.height ?? view.innerHeight,
+      }
+      const rect = dialog.getBoundingClientRect()
+      const layout = mediaDialogLayout(
+        trigger.getBoundingClientRect(),
+        viewport,
+        {
+          width: rect.width || Math.min(368, viewport.width - 32),
+          height: rect.height || dialog.scrollHeight,
+        },
+      )
+      dialog.style.left = `${layout.left}px`
+      dialog.style.top = `${layout.top}px`
+      dialog.style.setProperty(
+        '--pte-dialog-max-height',
+        `${layout.maxHeight}px`,
+      )
+    }
+    dialog.showModal()
+    position()
+    dialog
+      .querySelector<HTMLInputElement>('input')
+      ?.focus({ preventScroll: true })
+    view.addEventListener('resize', position)
+    view.addEventListener('scroll', position, true)
+    view.visualViewport?.addEventListener('resize', position)
+    view.visualViewport?.addEventListener('scroll', position)
+    const observer =
+      typeof view.ResizeObserver === 'function'
+        ? new view.ResizeObserver(position)
+        : undefined
+    observer?.observe(dialog)
+    return () => {
+      observer?.disconnect()
+      view.removeEventListener('resize', position)
+      view.removeEventListener('scroll', position, true)
+      view.visualViewport?.removeEventListener('resize', position)
+      view.visualViewport?.removeEventListener('scroll', position)
+      dialog.close()
+      trigger.focus({ preventScroll: true })
+    }
+  }, [showingDialog])
+
   return (
     <div className="pte-media-tool">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => btn.send({ type: 'open dialog' })}
         disabled={btn.snapshot.matches('disabled')}
         aria-label={schemaType.title}
+        aria-haspopup="dialog"
         aria-expanded={showingDialog}
         title={schemaType.title}
       >
         {schemaType.icon && <schemaType.icon />}
       </button>
       {showingDialog && (
-        <div
+        <dialog
+          ref={dialogRef}
           className="pte-media-dialog"
-          role="group"
           aria-label={`Insert ${kind}`}
+          aria-modal="true"
+          onCancel={(event) => {
+            event.preventDefault()
+            close()
+          }}
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return
+            const rect = event.currentTarget.getBoundingClientRect()
+            if (
+              event.clientX < rect.left ||
+              event.clientX > rect.right ||
+              event.clientY < rect.top ||
+              event.clientY > rect.bottom
+            )
+              close()
+          }}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              event.target instanceof HTMLInputElement
+            ) {
+              event.preventDefault()
+              insert()
+            }
+          }}
         >
+          <header className="pte-media-dialog-header">
+            <h2>Insert {kind}</h2>
+            <button
+              type="button"
+              className="pte-media-close"
+              aria-label={`Close insert ${kind} dialog`}
+              onClick={close}
+            >
+              ×
+            </button>
+          </header>
           <MediaFields kind={kind} value={fields} onChange={setFields} />
           {error && (
             <p className="pte-media-error" role="alert">
               {error}
             </p>
           )}
-          <div className="pte-media-actions">
+          <footer className="pte-media-actions">
+            <button type="button" onClick={close}>
+              Cancel
+            </button>
             <button
               type="button"
-              onClick={() => {
-                const src = safeMediaSource(fields.src)
-                if (!src) {
-                  setError('Enter a valid media URL or path.')
-                  return
-                }
-                btn.send({
-                  type: 'insert',
-                  value: {
-                    src,
-                    alt: fields.alt.trim(),
-                    caption: fields.caption.trim(),
-                  },
-                  placement: undefined,
-                })
-                reset()
-              }}
+              className="pte-media-primary"
+              onClick={insert}
             >
               Insert
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                btn.send({ type: 'close dialog' })
-                reset()
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+          </footer>
+        </dialog>
       )}
     </div>
   )
