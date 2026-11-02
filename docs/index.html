@@ -5,11 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>portable-text-editor-htmx — CDN smoke test</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
-      h1 { margin-bottom: 0.25rem; }
-      button[type="submit"] { margin-top: 1rem; padding: 8px 16px; cursor: pointer; }
-      pre { background: #f6f6f6; padding: 1rem; overflow-x: auto; font-size: 12px; border: 1px solid #ddd; border-radius: 6px; }
-      .live { color: #666; font-size: 12px; }
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        margin-bottom: 0.25rem;
+      }
+      button[type='submit'] {
+        margin-top: 1rem;
+        padding: 8px 16px;
+        cursor: pointer;
+      }
+      pre {
+        background: #f6f6f6;
+        padding: 1rem;
+        overflow-x: auto;
+        font-size: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+      }
+      .live {
+        color: #666;
+        font-size: 12px;
+      }
     </style>
 
     <!-- Pin to a commit SHA in real usage; @main is fine for a smoke test. -->
@@ -21,12 +42,16 @@
   <body>
     <h1>portable-text-editor-htmx</h1>
     <p>
-      Loaded from esm.sh. Type below, toggle styles, click <strong>Submit</strong>
-      — the form data is captured client-side and shown as JSON.
+      Loaded from esm.sh. Add text, images, or videos. Media blocks include
+      descriptions and captions, with Edit and Remove controls. Click
+      <strong>Submit</strong> to inspect the resulting Portable Text JSON.
     </p>
 
     <form id="demo">
-      <portable-text-editor name="content" data-initial="[]"></portable-text-editor>
+      <portable-text-editor
+        name="content"
+        data-initial="[]"
+      ></portable-text-editor>
       <button type="submit">Submit</button>
       <span class="live" id="live"></span>
     </form>
