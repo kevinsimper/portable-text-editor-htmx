@@ -72,6 +72,29 @@ const paragraph = {
   ],
 }
 
+async function selectParagraph(
+  window: Window,
+  element: Element,
+): Promise<void> {
+  await waitFor(() => Boolean(element.querySelector('.pte-editable')))
+  const editable = element.querySelector<HTMLElement>('.pte-editable')!
+  editable.focus()
+  await waitFor(() => Boolean(element.querySelector('[data-slate-string]')))
+  const text = element.querySelector('[data-slate-string]')!.firstChild!
+  const range = window.document.createRange()
+  range.setStart(text, text.textContent!.length)
+  range.collapse(true)
+  const selection = window.getSelection()!
+  selection.removeAllRanges()
+  selection.addRange(range)
+  window.document.dispatchEvent(new window.Event('selectionchange'))
+  await waitFor(
+    () =>
+      !element.querySelector<HTMLButtonElement>('button[aria-label="Video"]')!
+        .disabled,
+  )
+}
+
 test('native image/video descriptions and captions survive initialization and form submission', async () => {
   const initial = [
     paragraph,
@@ -107,33 +130,26 @@ test('native image/video descriptions and captions survive initialization and fo
 })
 
 test('inserts a native video with a description and caption through the toolbar', async () => {
-  const { window, element, value } = mount([paragraph])
+  const { window, form, element, value } = mount([paragraph])
   await waitFor(() =>
     Boolean(element.querySelector('button[aria-label="Video"]')),
   )
-  await waitFor(() => Boolean(element.querySelector('.pte-editable')))
-  const editable = element.querySelector<HTMLElement>('.pte-editable')!
-  editable.focus()
-  await waitFor(() => Boolean(element.querySelector('[data-slate-string]')))
-  const text = element.querySelector('[data-slate-string]')!.firstChild!
-  const range = window.document.createRange()
-  range.setStart(text, text.textContent!.length)
-  range.collapse(true)
-  const selection = window.getSelection()!
-  selection.removeAllRanges()
-  selection.addRange(range)
-  window.document.dispatchEvent(new window.Event('selectionchange'))
-  await waitFor(
-    () =>
-      !element.querySelector<HTMLButtonElement>('button[aria-label="Video"]')!
-        .disabled,
-  )
+  await selectParagraph(window, element)
   element
     .querySelector<HTMLButtonElement>('button[aria-label="Video"]')!
     .click()
   await waitFor(() =>
     Boolean(element.querySelector('[aria-label="Insert video"]')),
   )
+  const dialog = element.querySelector<HTMLDialogElement>('dialog')!
+  assert.equal(dialog.open, true)
+  assert.equal(dialog.getAttribute('aria-modal'), 'true')
+  assert.equal(window.document.activeElement, dialog.querySelector('input'))
+  let submitted = false
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    submitted = true
+  })
   function fill(label: string, text: string): void {
     const input = element.querySelector<HTMLInputElement>(
       `input[aria-label="${label}"]`,
@@ -151,12 +167,14 @@ test('inserts a native video with a description and caption through the toolbar'
   await new Promise((resolve) => setTimeout(resolve, 0))
   fill('Video caption', 'Ready for service in København')
   await new Promise((resolve) => setTimeout(resolve, 0))
-  const insert = [
-    ...element.querySelectorAll<HTMLButtonElement>(
-      '[aria-label="Insert video"] button',
-    ),
-  ].find((button) => button.textContent === 'Insert')!
-  insert.click()
+  dialog.querySelector('input')!.dispatchEvent(
+    new window.KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    }),
+  )
+  assert.equal(submitted, false)
   await waitFor(() => value().some((block) => block._type === 'video'))
   const video = value().find((block) => block._type === 'video')!
   assert.deepEqual(
@@ -226,4 +244,36 @@ test('edits a selected caption through the native controls and submits it immedi
     .click()
   await waitFor(() => !value().some((block) => block._key === 'photo'))
   assert.equal(element.querySelector('img'), null)
+})
+
+test('cancelling the media dialog restores focus and leaves the document unchanged', async () => {
+  const { window, element, value } = mount([paragraph])
+  await waitFor(() =>
+    Boolean(element.querySelector('button[aria-label="Video"]')),
+  )
+  const trigger = element.querySelector<HTMLButtonElement>(
+    'button[aria-label="Video"]',
+  )!
+  await selectParagraph(window, element)
+  trigger.click()
+  await waitFor(() => Boolean(element.querySelector('dialog[open]')))
+  const dialog = element.querySelector<HTMLDialogElement>('dialog')!
+  assert.equal(window.document.activeElement, dialog.querySelector('input'))
+  const cancel = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(
+    (button) => button.textContent === 'Cancel',
+  )!
+  cancel.click()
+  await waitFor(() => !element.querySelector('dialog'))
+  assert.equal(window.document.activeElement, trigger)
+  assert.equal(trigger.getAttribute('aria-expanded'), 'false')
+  assert.deepEqual(value(), [paragraph])
+  await selectParagraph(window, element)
+  trigger.click()
+  await waitFor(() => Boolean(element.querySelector('dialog[open]')))
+  element
+    .querySelector('dialog')!
+    .dispatchEvent(new window.Event('cancel', { cancelable: true }))
+  await waitFor(() => !element.querySelector('dialog'))
+  assert.equal(window.document.activeElement, trigger)
+  assert.deepEqual(value(), [paragraph])
 })
